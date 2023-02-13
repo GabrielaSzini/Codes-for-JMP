@@ -8,11 +8,10 @@ using DataFrames
 using DelimitedFiles
 using ProgressMeter
 using ThreadsX
-using Base.Iterators
+using IterTools
 using Random
 using LinearAlgebra
 using Optim, NLSolversBase
-using Base.Threads
 using FileIO, JLD2
 using StatsModels
 using CategoricalArrays
@@ -37,11 +36,10 @@ addprocs(30)
     using DelimitedFiles
     using ProgressMeter
     using ThreadsX
-    using Base.Iterators
+    using IterTools
     using Random
     using LinearAlgebra
     using Optim, NLSolversBase
-    using Base.Threads
     using FileIO, JLD2
     using StatsModels
     using CategoricalArrays
