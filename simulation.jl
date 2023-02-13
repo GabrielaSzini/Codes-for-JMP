@@ -220,7 +220,7 @@ end
 
 end
 
-sims = 500
+sims = 30
 simulation_output_total = @time @showprogress pmap(1:sims) do sim
     simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
 end
