@@ -3,6 +3,7 @@ using Distributions
 using ForwardDiff
 using StatsFuns
 using StatFiles
+using StatsModels
 using DataFrames
 using DelimitedFiles
 using ProgressMeter
@@ -15,14 +16,19 @@ using Base.Threads
 using FileIO, JLD2
 using StatsModels
 using CategoricalArrays
+using RDatasets
 using CSV
 using StatsBase
+#using ModelFrame
+using GLM
+
 
 using Distributed
 addprocs(30)
 
 @everywhere begin
-    using Pkg; Pkg.activate(".")
+    using Pkg
+    Pkg.activate(".")
     using Distributions
     using ForwardDiff
     using StatsFuns
@@ -39,17 +45,17 @@ addprocs(30)
     using FileIO, JLD2
     using StatsModels
     using CategoricalArrays
+    using RDatasets
     using CSV
     using StatsBase
+    #using ModelFrame
+    using GLM
 
     include("utils/stats.jl")
 
     ### Load data ###
-
     trade_data = DataFrame(load("trade.dta"))
-
     ### Data Generating Process ###
-
     # removing missing values
     trade_data_dgp = dropmissing(trade_data, "vtrade")
     # winsorizing variable vtrade
@@ -59,15 +65,15 @@ addprocs(30)
     #vtrade_dgp_winsorized[vtrade_dgp_winsorized .> upper_threshold] .= upper_threshold
     #trade_data_dgp[!,:"ytrim"] = vtrade_dgp_winsorized
     # run tobit with two-way FE
-    cat_array_id = categorical(trade_data_dgp[!, :id])
-    cat_array_jd = categorical(trade_data_dgp[!, :jd])
-    trade_data_dgp[!, :id] = cat_array_id
-    trade_data_dgp[!, :jd] = cat_array_jd
+    #cat_array_id = categorical(trade_data_dgp[!, :id])
+    #cat_array_jd = categorical(trade_data_dgp[!, :jd])
+    #trade_data_dgp[!, :id] = cat_array_id
+    #trade_data_dgp[!, :jd] = cat_array_jd
 
     # obtaining Tobit estimates from CFW
     coefficients_tobit_label = CSV.read("coefficients_tobit_labels.csv", DataFrame)
     coefficients_tobit = coefficients_tobit_label[!, :x]
-    coefficients_tobit_label = coefficients_tobit_label[!, :Column1]
+    #coefficients_tobit_label = coefficients_tobit_label[!, :Column1]
     scale_tobit = CSV.read("scale_tobit.csv", DataFrame)
     scale_tobit = scale_tobit[1,1]
 
@@ -76,24 +82,29 @@ addprocs(30)
     theta_tobit = (coefficients_tobit./sigma_tobit).*(pi/sqrt(3))
 
     # constructing ys (quantiles of data)
-    ys = quantile((trade_data_dgp[!, "vtrade"]), collect(0:200)/200)
+    ys = quantile((trade_data_dgp[!, "vtrade"]), collect(0:100)/100)
     # take only from 110 onwards (last 0 quantile onwards)
-    ys = ys[110:201]
+    ys = ys[55:101]
     ys_tobit = ys./sigma_tobit.*(pi/sqrt(3))
-    taus = collect(0:200)/200
-    taus = taus[110:201]
+    taus = collect(0:100)/100
+    taus = taus[55:101]
     n_thres = length(ys)
 
     # construct new data
     nobs = size(trade_data_dgp)[1]
     # construct set of dummys
-    dummy_id = ModelFrame(@formula(vtrade ~ 0 + id), trade_data_dgp, contrasts = Dict(:id => DummyCoding())) |> modelmatrix
-    dummy_jd = ModelFrame(@formula(vtrade ~ 1 + jd), trade_data_dgp, contrasts = Dict(:jd => DummyCoding())) |> modelmatrix
-    dummy_jd = dummy_jd[:, 2:end]
+    #dummy_id = ModelFrame(@formula(vtrade ~ 0 + id), trade_data_dgp, contrasts = Dict(:id => DummyCoding())) |> modelmatrix
+    #dummy_jd = ModelFrame(@formula(vtrade ~ 1 + jd), trade_data_dgp, contrasts = Dict(:jd => DummyCoding())) |> modelmatrix
+    #dummy_jd = dummy_jd[:, 2:end]
     # construct equivalent of W matrix: to obtain Ysim
-    W_matrix = hcat(trade_data_dgp[!,"ldist"], trade_data_dgp[!,"legal"], trade_data_dgp[!,"border"], trade_data_dgp[!,"language"], trade_data_dgp[!,"colony"], trade_data_dgp[!,"currency"], trade_data_dgp[!,"fta"], trade_data_dgp[!,"religion"], dummy_id, dummy_jd)
+    #W_matrix = hcat(trade_data_dgp[!,"ldist"], trade_data_dgp[!,"legal"], trade_data_dgp[!,"border"], trade_data_dgp[!,"language"], trade_data_dgp[!,"colony"], trade_data_dgp[!,"currency"], trade_data_dgp[!,"fta"], trade_data_dgp[!,"religion"], dummy_id, dummy_jd)
+    
+    W_matrix = CSV.read("W_matrix.csv", DataFrame)
+    W_matrix = Matrix(W_matrix)
+
     # for explanatory variables in estimation method
-    trade_data_matrix = convert(Matrix, trade_data)
+    trade_data_matrix = Matrix(trade_data)
+    N=157
     #remaining of explanatory variables we simply get from original dataset
     # log of distance
     X₁_vector = trade_data_matrix[:,8]
@@ -206,23 +217,26 @@ end
 
         β̂_comb_grid[g,:] = β̂_comb'
 
-        @time se₁ = standarderrors_application(Y_1, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
+        se₁ = standarderrors_application(Y_1, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
         se₁_grid[g,:] = se₁'
     end
 
     output = hcat(β̂_comb_grid, se₁_grid, quantile_grid, percentage_nodes, ys_tobit, simulation_number)
 
-    filename = "simulation_output_$(sim).jld2"
-    save(filename, "output", output)
-    writedlm("simulation_output_$(sim).txt", output)
+    file_path = "results_simulations/simulation_output_$(sim).jld2"
+    save(file_path, "output", output)
 
     return output
 
 end
 
-sims = 30
-simulation_output_total = @time @showprogress pmap(1:sims) do sim
+sims = 100
+simulation_output_total = @time @showprogress pmap(51:sims) do sim
     simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
 end
 
 save("results_simulations/simulation_output_total.jld2","simulation_output_total",simulation_output_total)
+
+
+
+#check if passing everything needed inside function
