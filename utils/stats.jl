@@ -13,7 +13,7 @@ end
 """
 Function for inverse logit
 """
-function inverselogit(x)
+function inverselogit(x::Int64)
     y = log(x / (1 - x))
     return y
 end
@@ -38,7 +38,7 @@ Function that dummify dependent variable
 # function: we dummify altogether for all grid points the dependent variable.
 # given a grid point and the trade flow variable Y, we want to dummify.
 # take value 1 if smaller or equal to grid point and else, 0.
-function dummy(Y, N, grid, n_points)
+function dummy(Y::Array{Float64,2}, N::Int64, grid::Array{Float64,1}, n_points::Int64)
     Ydummy_matrix = zeros(N, N, n_points)
     for count in 1:n_points
         gridpoint = grid[count]
@@ -54,14 +54,14 @@ end
 Function that takes double differencing
 """
 # inputs: any matrix M (N*N with dyads) and indices for quadruples
-function Δ(M, i, j, k, l)
+function Δ(M::Array{Float64,2}, i::Int64, j::Int64, k::Int64, l::Int64)
     @inbounds M[i, j] - M[i, k] - M[l, j] + M[l, k]
 end
 
 """
 Function F (logistic)
 """
-function F(e)
+function F(e::Float64)
     F = 1/ (1+ exp(-e))
 
     return F
@@ -70,7 +70,7 @@ end
 """
 Function f (logistic)
 """
-function f(e)
+function f(e::Float64)
     f = F(e)*(1 - F(e))
     
     return f
@@ -79,7 +79,7 @@ end
 """
 Function ff (logistic)
 """
-function ff(e)
+function ff(e::Float64)
     ff = f(e)* (1- F(e)) - f(e) * F(e)
 
     return ff
@@ -88,7 +88,7 @@ end
 """
 Computing X̃, a, b, c for a given quantile
 """
-function dataquantilecomb(Y, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈)
+function dataquantilecomb(Y::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2})
     N = size(Y,1)
     nn = binomial(N,2)
     mm = binomial(N-2,2)
@@ -150,7 +150,7 @@ end
 """
 Log-likelihood function
 """
-function log_likelihood(X̃, ỹ, β)
+function log_likelihood(X̃::Array{Float64,2}, ỹ::Array{Float64,1}, β::Array{Float64,1})
     ll = .0
     @inbounds for i in eachindex(ỹ)
         zᵢ = dot(X̃[i,:],β)
@@ -165,12 +165,12 @@ end
 """
 Make a closure for log-likelihood, returning negative
 """
-make_closures(X̃, ỹ) = β -> -log_likelihood(X̃, ỹ, β)
+make_closures(X̃::Array{Float64,2}, ỹ::Array{Float64,1}) = β -> -log_likelihood(X̃, ỹ, β)
 
 """
 Initialization of parameters for log-likelihood
 """
-function initialize!(β₀, X̃, ỹ, ϵ = 0.1)
+function initialize!(β₀::Array{Float64,1}, X̃::Array{Float64,2}, ỹ::Array{Float64,1}, ϵ = 0.1)
     logit_y = [ifelse(y_i == 1.0, logit(1-ϵ), logit(ϵ)) for y_i in ỹ]
     for j in 1:length(β₀)
         β₀[j] = cov(logit_y, @view(X̃[:,j]))/var(@view(X̃[:,j]))
@@ -183,7 +183,7 @@ end
 """
 Computing X̃, a, b, c for a given quantile considering all permutations
 """
-function dataquantileperm(Y, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈)
+function dataquantileperm(Y::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2})
     N = size(Y,1)
     #nn = binomial(N,2)
     #mm = binomial(N-2,2)
@@ -241,7 +241,7 @@ function dataquantileperm(Y, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈)
 
 end
 
-function standarderrors_application(Y_1, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
+function standarderrors_application(Y_1::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2}, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
     N = size(Y_1,1)
     #nn = binomial(N,2)
     #mm = binomial(N-2,2)
@@ -401,252 +401,10 @@ end
 """
 Winsorize variable: only upper quantile
 """
-function winsorize(x, upper_quantile)
+function winsorize(x::Array{Float64,1}, upper_quantile::Float64)
     upper_threshold = quantile(x, upper_quantile)
     x_winsorized = x
     x_winsorized[x_winsorized .> upper_threshold] = upper_threshold
     return x_winsorized
 end
 
-
-"""
-OLDER FUNCTIONS:
-"""
-
-
-"""
-Function that computes all types of standard errors
-Note: se₁ denotes the standard errors calculated by Jochmans
-      se₂ denotes the standard errors with only combinations for the Hessian (J)
-      se₃ denotes the standard errors calculated by Jochmans without the factors 4 * nondiag
-      se₄ denotes the standard errors with only combinations for the Hessian (J) and without the factors 4 * nondiag
-"""
-function standarderrors(dim, N, a_perm, c_perm, nondiag_perm, X̃₁_perm, X̃₂_perm, X̃₃_perm, X̃₄_perm, X̃₅_perm, X̃₆_perm, X̃₇_perm, X̃₈_perm, a_comb_cond, nondiag_comb_cond, X̃_comb_cond, β̂)
-
-    S₁ = Array{Float64}(undef,N,N,dim)
-    S₃ = Array{Float64}(undef,N,N,dim)
-    J₁ = Array{Float64}(undef,dim,dim)
-    J₃ = Array{Float64}(undef,dim,dim)
-
-    ρ = N * (N-1) * (N-2) * (N-3)
-
-    counter1 = 0
-    counter2 = 1
-    @inbounds for i1 in 1:N, j1 in 1:N
-        (i1 - j1) == 0 && continue
-
-        index1 = counter1 * (N-2) * (N-3) + 1   
-        index2 = (N-2) * (N-3) * counter2
-
-        X̃₁_relevant = @view X̃₁_perm[index1:index2,:]
-        X̃₂_relevant = @view X̃₂_perm[index1:index2,:]
-        X̃₃_relevant = @view X̃₃_perm[index1:index2,:]
-        X̃₄_relevant = @view X̃₄_perm[index1:index2,:]
-        X̃₅_relevant = @view X̃₅_perm[index1:index2,:]
-        X̃₆_relevant = @view X̃₆_perm[index1:index2,:]
-        X̃₇_relevant = @view X̃₇_perm[index1:index2,:]
-        X̃₈_relevant = @view X̃₈_perm[index1:index2,:]
-
-        X̃_relevant = [X̃₁_relevant X̃₂_relevant X̃₃_relevant X̃₄_relevant X̃₅_relevant X̃₆_relevant X̃₇_relevant X̃₈_relevant]
-
-        #index_i_relevant = index_i_perm[index1:index2,:]
-        #index_j_relevant = index_j_perm[index1:index2,:]
-        a_relevant = @view a_perm[index1:index2,:]
-        #b_relevant = b_perm[index1:index2,:]
-        c_relevant = @view c_perm[index1:index2,:]
-        nondiag_relevant = nondiag_perm[index1:index2,:]
-
-        inner = X̃_relevant*β̂
-        inner2 = a_relevant .- F.(inner)
-
-        S_inner₁ = 4 .* X̃_relevant .* inner2 .* c_relevant .* nondiag_relevant ./ ((N-2)*(N-3))
-        S_sums₁ = sum(S_inner₁,dims=1)
-
-        S_inner₃ = X̃_relevant .* inner2 .* c_relevant ./ ((N-2)*(N-3))
-        S_sums₃ = sum(S_inner₃,dims=1)
-
-        for d in 1:dim
-            S₁[i1,j1,d] = S_sums₁[d]
-            S₃[i1,j1,d] = S_sums₃[d]
-        end
-
-        #the next lines up to counter1 is the new way of computing j
-        inner3₁ = (0 .- f.(inner)).* c_relevant .* nondiag_relevant ./ ρ
-        inner3₃ = (0 .- f.(inner)).* c_relevant ./ ρ
-
-        for d in 1:dim
-            for dd in 1:dim
-                inner4₁ = X̃_relevant[:,d] .* X̃_relevant[:,dd] .* inner3₁
-                inner4₃ = X̃_relevant[:,d] .* X̃_relevant[:,dd] .* inner3₃
-                J₁[d,dd] += sum(inner4₁)
-                J₃[d,dd] += sum(inner4₃)
-            end
-        end
-
-        counter1 += 1
-        counter2 += 1
-        #print(" $i1 $j1, ")
-    end
-
-    #print(" Calculated J₁ ")
-
-
-    V₁ = zeros(dim,dim)
-    V₃ = zeros(dim,dim)
-
-    for d in 1:dim
-        for dd in 1:dim
-            V₁[d,dd] = mean(S₁[:,:,d] .* S₁[:,:,dd])
-            V₃[d,dd] = mean(S₃[:,:,d] .* S₃[:,:,dd])
-        end
-    end
-
-    #print(" Calculated V ")
-
-    #inner3 = X̃_perm*β̂
-    #inner4 = (0 .- f.(inner3)).* c_perm .* nondiag_perm ./ ρ
-    #need to think of what to do here for J.
-    #for d in 1:dim
-    #    for dd in 1:dim
-    #        inner5 = X̃_perm[:,d] .* X̃_perm[:,dd] .* inner4
-    #        J[d,dd] = sum(inner5)
-    #    end
-    #end
-
-    #print(" Calculated J ")
-
-    W₁ = inv(J₁'*J₁)'*(J₁'*V₁*J₁)*inv(J₁'*J₁)
-    se₁ = sqrt.(diag(W₁)./(N*N))
-
-    W₃ = inv(J₃'*J₃)'*(J₃'*V₃*J₃)*inv(J₃'*J₃)
-    se₃ = sqrt.(diag(W₃)./(N*N))
-
-    # now calculating J₂
-    # we consider only the ones that satisfy the condition being equal to 1 (as at the end inner2 is multiplied by c_comb) - use X̃_comb_cond
-    J₂ = zeros(dim,dim)
-    J₄ = zeros(dim,dim)
-
-    nn = binomial(N,2)
-    mm = binomial(N-2,2)
-    mn = nn * mm #number of combinations
-    inner_comb = X̃_comb_cond*β̂
-    inner2_comb₂ = (0 .- f.(inner_comb)) .* nondiag_comb_cond ./ mn
-    inner2_comb₄ = (0 .- f.(inner_comb)) ./ mn
-    for d in 1:dim
-        for dd in 1:dim
-            inner3_comb₂ = X̃_comb_cond[:,d] .* X̃_comb_cond[:,dd] .* inner2_comb₂
-            inner3_comb₄ = X̃_comb_cond[:,d] .* X̃_comb_cond[:,dd] .* inner2_comb₄
-            J₂[d,dd] = sum(inner3_comb₂)
-            J₄[d,dd] = sum(inner3_comb₄)
-        end
-    end
-
-    #print(" Calculated J₂ ")
-
-    V₂ = V₁
-    V₄ = V₃
-    
-    W₂ = inv(J₂'*J₂)'*(J₂'*V₂*J₂)*inv(J₂'*J₂)
-    se₂ = sqrt.(diag(W₂)./(N*N))
-
-    W₄ = inv(J₄'*J₄)'*(J₄'*V₄*J₄)*inv(J₄'*J₄)
-    se₄ = sqrt.(diag(W₄)./(N*N))
-    
-
-    return se₁, se₂, se₃, se₄
-end
-
-"""
-Function that construct grids
-"""
-# inputs: N (number of countries), Y (matrix of dependent variable)
-# function: we discretize the support of the dependent variable according to Chernozhukov, Fernandez-Val and Weidner (2020)
-function grids(Y, N)
-    Ȳ = maximum(skipmissing(Y))
-    Y̲ = minimum(skipmissing(Y))
-    n = N*(N-1)
-    d = (Ȳ - Y̲) /(sqrt(n) * log(log(n)))
-    n_points = floor(sqrt(n) * log(log(n))) + 1
-    n_points= convert(Int64,n_points)
-    grid = zeros(n_points)
-    y_grid = Y̲
-    for count in 1:n_points
-        grid[count] = y_grid
-        y_grid += d
-    end
-    # make grid with d
-    return grid, n_points
-end
-
-"""
-Standard Errors function
-"""
-function standarderrorsprevious(β, Y, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈)
-    N = size(Y_1,1)
-    #nn = binomial(N,2)
-    #mm = binomial(N-2,2)
-    ρ = N * (N-1) * (N-2) * (N-3)
-    print(ρ)
-    dim = length(β)
-    
-    #initialize matrices
-    S = zeros(N,N,dim)
-    J = zeros(dim,dim)
-
-    counter = 1
-    for i1 in 1:N, j1 in 1:N
-        (i1 - j1) == 0 && continue
-        for i2 in 1:N
-            (i2-i1) * (i2-j1) == 0 && continue
-            for j2 in 1:N
-                (j2-i1) * (j2-j1) * (j2-i2) == 0 && continue
-
-                nondiag = (j1≠i1 && j1≠i2 ? 1 : 0) + (j2≠i1 && j2≠i2 ? 1 : 0)
-
-                c = ((Y[i1, j1] > Y[i1, j2]) && (Y[i2, j1] < Y[i2, j2])) || ((Y[i1, j1] < Y[i1, j2]) && (Y[i2, j1] > Y[i2, j2])) ? 1 : 0
-                a = ((Y[i1, j1] > Y[i1, j2]) && (Y[i2, j1] < Y[i2, j2])) ? 1 : 0
-                b = ((Y[i1, j1] < Y[i1, j2]) && (Y[i2, j1] > Y[i2, j2])) ? 1 : 0
-
-                X̃₁ = Δ(X₁, i1, j1, j2, i2)
-                X̃₂ = Δ(X₂, i1, j1, j2, i2)
-                X̃₃ = Δ(X₃, i1, j1, j2, i2)
-                X̃₄ = Δ(X₄, i1, j1, j2, i2)
-                X̃₅ = Δ(X₅, i1, j1, j2, i2)
-                X̃₆ = Δ(X₆, i1, j1, j2, i2)
-                X̃₇ = Δ(X₇, i1, j1, j2, i2)
-                X̃₈ = Δ(X₈, i1, j1, j2, i2)
-
-                X̃ = [X̃₁; X̃₂; X̃₃; X̃₄; X̃₅; X̃₆; X̃₇; X̃₈]
-                X̃ = reshape(X̃,8,1)
-
-                for d in 1:dim
-                    inner = dot(X̃,β)
-                    S[i1,j1,d] = S[i1,j1,d] + (4 * X̃[d] * (a - F(inner)) * c * nondiag)/((N-2)*(N-3)) 
-                end
-
-                for d in 1:dim
-                    for dd in 1:dim
-                        inner = dot(X̃,β)
-                        J[d,dd] = J[d,dd] + X̃[d] * X̃[dd] * (0-f(inner)) * c * nondiag/ρ
-                    end
-                end
-
-                print(counter)
-                counter += 1
-            end
-        end
-    end
-
-    #Q = J
-    V = zeros(dim,dim)
-    for d in 1:dim
-        for dd in 1:dim
-            V[d,dd] = mean((S[:,:,d].*S[:,:,dd]))
-        end
-    end
-
-    W = inv(Q'*Q)'*(Q'*V*Q)*inv(Q'*Q)
-    se = sqrt.(diag(W)./(N*N))
-
-    return se
-end

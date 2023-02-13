@@ -23,7 +23,7 @@ using GLM
 
 
 using Distributed
-addprocs(30)
+addprocs(2)
 
 @everywhere begin
     using Pkg
@@ -35,14 +35,14 @@ addprocs(30)
     using DataFrames
     using DelimitedFiles
     using ProgressMeter
-    using ThreadsX
-    using IterTools
+    #using ThreadsX
+    #using IterTools
     using Random
     using LinearAlgebra
     using Optim, NLSolversBase
     using FileIO, JLD2
-    using StatsModels
-    using CategoricalArrays
+    #using StatsModels
+    #using CategoricalArrays
     using RDatasets
     using CSV
     using StatsBase
@@ -140,7 +140,7 @@ addprocs(30)
 
 end
 
-@everywhere function simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
+@everywhere function simulation(nobs::Int64, W_matrix::Array{Float64,2}, theta_tobit::Array{Float64,1}, ys_tobit::Array{Float64,1}, n_thres::Int64, taus::Array{Float64,1}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2}, sim::Int64)
     # UP TO HERE EVERYTHING IS THE SAME NO MATTER WHICH SIMULATION
     # start generating data
     u = randn(nobs)
@@ -228,8 +228,8 @@ end
 
 end
 
-sims = 100
-simulation_output_total = @time @showprogress pmap(51:sims) do sim
+sims = 2
+simulation_output_total = @time @showprogress pmap(1:sims) do sim
     simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
 end
 
