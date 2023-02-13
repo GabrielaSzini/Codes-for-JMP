@@ -19,7 +19,7 @@ using CSV
 using StatsBase
 
 using Distributed
-addprocs(4)
+addprocs(30)
 
 @everywhere begin
     using Pkg; Pkg.activate(".")
