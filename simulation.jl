@@ -221,7 +221,7 @@ end
 
     output = hcat(β̂_comb_grid, se₁_grid, quantile_grid, percentage_nodes, ys_tobit, simulation_number)
 
-    file_path = "results_simulations/simulation_output_$(sim).jld2"
+    file_path = "results_simulations/simulation_output_smaller_$(sim).jld2"
     save(file_path, "output", output)
 
     return output
@@ -233,7 +233,7 @@ simulation_output_total = @time @showprogress pmap(1:sims) do sim
     simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
 end
 
-save("results_simulations/simulation_output_total.jld2","simulation_output_total",simulation_output_total)
+save("results_simulations/simulation_output_total_smallersimulation.jld2","simulation_output_total",simulation_output_total)
 
 
 
