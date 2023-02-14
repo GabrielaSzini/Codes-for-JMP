@@ -138,6 +138,22 @@ addprocs(2)
     X₇ = coalesce.(X₇, 0)
     X₈ = coalesce.(X₈, 0)
 
+    eval(Main, Expr(:delete, :trade_data_dgp))
+    eval(Main, Expr(:delete, :trade_data))
+    eval(Main, Expr(:delete, :trade_data_matrix))
+    eval(Main, Expr(:delete, :coefficients_tobit_label))
+    eval(Main, Expr(:delete, :coefficients_tobit))
+    eval(Main, Expr(:delete, :scale_tobit))
+    eval(Main, Expr(:delete, :sigma_tobit))
+    eval(Main, Expr(:delete, :X₁_vector))
+    eval(Main, Expr(:delete, :X₂_vector))
+    eval(Main, Expr(:delete, :X₃_vector))
+    eval(Main, Expr(:delete, :X₄_vector))
+    eval(Main, Expr(:delete, :X₅_vector))
+    eval(Main, Expr(:delete, :X₆_vector))
+    eval(Main, Expr(:delete, :X₇_vector))
+    eval(Main, Expr(:delete, :X₈_vector))
+    GC.gc()
 end
 
 @everywhere function simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
@@ -206,6 +222,15 @@ end
         nondiag_comb_cond = @view nondiag_comb[c_comb.==1]
 
         X̃_comb_cond = [X̃₁_comb_cond X̃₂_comb_cond X̃₃_comb_cond X̃₄_comb_cond X̃₅_comb_cond X̃₆_comb_cond X̃₇_comb_cond X̃₈_comb_cond]
+        eval(Main, Expr(:delete, :X̃₁_comb_cond))
+        eval(Main, Expr(:delete, :X̃₂_comb_cond))
+        eval(Main, Expr(:delete, :X̃₃_comb_cond))
+        eval(Main, Expr(:delete, :X̃₄_comb_cond))
+        eval(Main, Expr(:delete, :X̃₅_comb_cond))
+        eval(Main, Expr(:delete, :X̃₆_comb_cond))
+        eval(Main, Expr(:delete, :X̃₇_comb_cond))
+        eval(Main, Expr(:delete, :X̃₈_comb_cond))
+        GC.gc()
 
         β₀_comb = zeros(8,1)
         β₀_comb = initialize!(β₀_comb, X̃_comb_cond, ỹ_comb_cond)
@@ -217,23 +242,34 @@ end
 
         se₁ = standarderrors_application(Y_1, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
         se₁_grid[g,:] = se₁'
+
+        eval(Main, Expr(:delete, :X̃_comb_cond))
+        eval(Main, Expr(:delete, :nondiag_comb_cond))
+        eval(Main, Expr(:delete, :ỹ_comb_cond))
+        GC.gc()
+
     end
+
+    eval(Main, Expr(:delete, :Y))
+    eval(Main, Expr(:delete, :Ysim))
+    eval(Main, Expr(:delete, :Ydummy_matrix))
+    GC.gc()
 
     output = hcat(β̂_comb_grid, se₁_grid, quantile_grid, percentage_nodes, ys_tobit, simulation_number)
 
-    file_path = "results_simulations/simulation_output_smaller_$(sim).jld2"
+    file_path = "results_simulations/simulation_output_della_$(sim).jld2"
     save(file_path, "output", output)
 
     return output
 
 end
 
-sims = 2
+sims = 500
 simulation_output_total = @time @showprogress pmap(1:sims) do sim
     simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
 end
 
-save("results_simulations/simulation_output_total_smallersimulation.jld2","simulation_output_total",simulation_output_total)
+save("results_simulations/simulation_output_total_della.jld2","simulation_output_total",simulation_output_total)
 
 
 
