@@ -13,7 +13,7 @@ end
 """
 Function for inverse logit
 """
-function inverselogit(x::Int64)
+function inverselogit(x)
     y = log(x / (1 - x))
     return y
 end
@@ -38,7 +38,7 @@ Function that dummify dependent variable
 # function: we dummify altogether for all grid points the dependent variable.
 # given a grid point and the trade flow variable Y, we want to dummify.
 # take value 1 if smaller or equal to grid point and else, 0.
-function dummy(Y::Array{Float64,2}, N::Int64, grid::Array{Float64,1}, n_points::Int64)
+function dummy(Y, N, grid, n_points)
     Ydummy_matrix = zeros(N, N, n_points)
     for count in 1:n_points
         gridpoint = grid[count]
@@ -54,14 +54,14 @@ end
 Function that takes double differencing
 """
 # inputs: any matrix M (N*N with dyads) and indices for quadruples
-function Δ(M::Array{Float64,2}, i::Int64, j::Int64, k::Int64, l::Int64)
+function Δ(M, i, j, k, l)
     @inbounds M[i, j] - M[i, k] - M[l, j] + M[l, k]
 end
 
 """
 Function F (logistic)
 """
-function F(e::Float64)
+function F(e)
     F = 1/ (1+ exp(-e))
 
     return F
@@ -70,7 +70,7 @@ end
 """
 Function f (logistic)
 """
-function f(e::Float64)
+function f(e)
     f = F(e)*(1 - F(e))
     
     return f
@@ -79,7 +79,7 @@ end
 """
 Function ff (logistic)
 """
-function ff(e::Float64)
+function ff(e)
     ff = f(e)* (1- F(e)) - f(e) * F(e)
 
     return ff
@@ -88,7 +88,7 @@ end
 """
 Computing X̃, a, b, c for a given quantile
 """
-function dataquantilecomb(Y::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2})
+function dataquantilecomb(Y, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈)
     N = size(Y,1)
     nn = binomial(N,2)
     mm = binomial(N-2,2)
@@ -150,7 +150,7 @@ end
 """
 Log-likelihood function
 """
-function log_likelihood(X̃::Array{Float64,2}, ỹ::Array{Float64,1}, β::Array{Float64,1})
+function log_likelihood(X̃, ỹ, β)
     ll = .0
     @inbounds for i in eachindex(ỹ)
         zᵢ = dot(X̃[i,:],β)
@@ -165,12 +165,12 @@ end
 """
 Make a closure for log-likelihood, returning negative
 """
-make_closures(X̃::Array{Float64,2}, ỹ::Array{Float64,1}) = β -> -log_likelihood(X̃, ỹ, β)
+make_closures(X̃, ỹ) = β -> -log_likelihood(X̃, ỹ, β)
 
 """
 Initialization of parameters for log-likelihood
 """
-function initialize!(β₀::Array{Float64,1}, X̃::Array{Float64,2}, ỹ::Array{Float64,1}, ϵ = 0.1)
+function initialize!(β₀, X̃, ỹ, ϵ = 0.1)
     logit_y = [ifelse(y_i == 1.0, logit(1-ϵ), logit(ϵ)) for y_i in ỹ]
     for j in 1:length(β₀)
         β₀[j] = cov(logit_y, @view(X̃[:,j]))/var(@view(X̃[:,j]))
@@ -183,7 +183,7 @@ end
 """
 Computing X̃, a, b, c for a given quantile considering all permutations
 """
-function dataquantileperm(Y::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2})
+function dataquantileperm(Y, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈)
     N = size(Y,1)
     #nn = binomial(N,2)
     #mm = binomial(N-2,2)
@@ -241,7 +241,7 @@ function dataquantileperm(Y::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Arr
 
 end
 
-function standarderrors_application(Y_1::Array{Float64,2}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2}, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
+function standarderrors_application(Y_1, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, β̂_comb, X̃_comb_cond,nondiag_comb_cond)
     N = size(Y_1,1)
     #nn = binomial(N,2)
     #mm = binomial(N-2,2)
@@ -401,7 +401,7 @@ end
 """
 Winsorize variable: only upper quantile
 """
-function winsorize(x::Array{Float64,1}, upper_quantile::Float64)
+function winsorize(x, upper_quantile)
     upper_threshold = quantile(x, upper_quantile)
     x_winsorized = x
     x_winsorized[x_winsorized .> upper_threshold] = upper_threshold

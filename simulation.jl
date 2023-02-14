@@ -140,7 +140,7 @@ addprocs(2)
 
 end
 
-@everywhere function simulation(nobs::Int64, W_matrix::Array{Float64,2}, theta_tobit::Array{Float64,1}, ys_tobit::Array{Float64,1}, n_thres::Int64, taus::Array{Float64,1}, X₁::Array{Float64,2}, X₂::Array{Float64,2}, X₃::Array{Float64,2}, X₄::Array{Float64,2}, X₅::Array{Float64,2}, X₆::Array{Float64,2}, X₇::Array{Float64,2}, X₈::Array{Float64,2}, sim::Int64)
+@everywhere function simulation(nobs, W_matrix, theta_tobit, ys_tobit, n_thres, taus, X₁, X₂, X₃, X₄, X₅, X₆, X₇, X₈, sim)
     # UP TO HERE EVERYTHING IS THE SAME NO MATTER WHICH SIMULATION
     # start generating data
     u = randn(nobs)
